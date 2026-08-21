@@ -27,6 +27,8 @@ export function parseJsFamily({ filePath, content, language }) {
   addSymbols(symbols, seenSymbols, content, /\b(export\s+)?interface\s+([A-Za-z_$][\w$]*)\b/g, "interface");
   addSymbols(symbols, seenSymbols, content, /\b(export\s+)?type\s+([A-Za-z_$][\w$]*)\s*=/g, "type");
   addSymbols(symbols, seenSymbols, content, /\b(export\s+)?enum\s+([A-Za-z_$][\w$]*)\b/g, "enum");
+  addAnonymousDefaultExport(symbols, seenSymbols, content, /export\s+default\s+(?:async\s+)?function\s*\(/g, "function");
+  addAnonymousDefaultExport(symbols, seenSymbols, content, /export\s+default\s+class(?:\s+extends\b|\s*\{)/g, "class");
   addSymbols(symbols, seenSymbols, content, /\b(export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>/g, "function-value");
   addSymbols(symbols, seenSymbols, content, /\b(export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?!\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>)/g, "variable");
 
@@ -80,6 +82,35 @@ function addSymbols(target, seenSymbols, content, regex, kind) {
       }
     });
   }
+}
+
+function addAnonymousDefaultExport(target, seenSymbols, content, regex, kind) {
+  const key = `${kind}:default`;
+  if (seenSymbols.has(key)) {
+    return;
+  }
+
+  const match = content.matchAll(regex).next().value;
+  if (!match || typeof match.index !== "number") {
+    return;
+  }
+
+  seenSymbols.add(key);
+  const location = countLineColumn(content, match.index);
+  const lineText = extractLine(content, location.line);
+  target.push({
+    name: "default",
+    kind,
+    exported: true,
+    line: location.line,
+    column: location.column,
+    metadata: {
+      anonymous: true,
+      defaultExport: true,
+      signature: lineText.trim(),
+      declarationLine: location.line
+    }
+  });
 }
 
 function extractLine(content, lineNumber) {

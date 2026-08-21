@@ -45,6 +45,14 @@ export function findNotesFuzzily(text) {
   return results;
 }
 
+export function isStandaloneNoteLine(line) {
+  const trimmed = String(line ?? "").trim();
+  if (!trimmed) {
+    return false;
+  }
+  return getNoteRegex().test(trimmed);
+}
+
 function inferNoteType(matchText) {
   const lower = (matchText || "").toLowerCase();
   for (const [canonical, aliases] of Object.entries(SEMANTICS.NOTES.aliases)) {

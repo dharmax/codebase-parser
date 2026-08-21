@@ -4,6 +4,7 @@
  */
 
 import { extractTaggedNotes } from "./shared.mjs";
+import { countLineColumn } from "./shared.mjs";
 import { parseJsFamily } from "./js-family.mjs";
 import { parseStyles } from "./styles.mjs";
 
@@ -43,11 +44,21 @@ export function parseHtml({ filePath, content, language = "html" }) {
 }
 
 export function parseRiot({ filePath, content }) {
-  const scriptContent = content.match(/<script[^>]*>([\s\S]*?)<\/script>/i)?.[1] ?? "";
-  const styleContent = content.match(/<style[^>]*>([\s\S]*?)<\/style>/i)?.[1] ?? "";
+  const script = collectEmbeddedParseResults({
+    filePath,
+    source: content,
+    tagPattern: /<script[^>]*>([\s\S]*?)<\/script>/ig,
+    parseBlock: ({ blockContent }) => parseJsFamily({ filePath, content: blockContent, language: "riot-script" }),
+    empty: emptyResult("riot-script")
+  });
+  const style = collectEmbeddedParseResults({
+    filePath,
+    source: content,
+    tagPattern: /<style[^>]*>([\s\S]*?)<\/style>/ig,
+    parseBlock: ({ blockContent }) => parseStyles({ filePath, content: blockContent, language: "riot-style" }),
+    empty: emptyResult("riot-style")
+  });
   const templateContent = content.replace(/<script[\s\S]*?<\/script>/ig, "").replace(/<style[\s\S]*?<\/style>/ig, "");
-  const script = scriptContent ? parseJsFamily({ filePath, content: scriptContent, language: "riot-script" }) : emptyResult("riot-script");
-  const style = styleContent ? parseStyles({ filePath, content: styleContent, language: "riot-style" }) : emptyResult("riot-style");
   const markup = parseHtml({ filePath, content: templateContent, language: "riot-template" });
 
   return {
@@ -62,6 +73,54 @@ export function parseRiot({ filePath, content }) {
       templateSelectors: markup.symbols.length
     },
     searchText: [script.searchText, style.searchText, markup.searchText].filter(Boolean).join("\n")
+  };
+}
+
+function collectEmbeddedParseResults({ filePath, source, tagPattern, parseBlock, empty }) {
+  const matches = [...source.matchAll(tagPattern)];
+  if (matches.length === 0) {
+    return empty;
+  }
+
+  const aggregate = {
+    language: empty.language,
+    fileKind: empty.fileKind,
+    symbols: [],
+    facts: [],
+    notes: [],
+    metadata: {},
+    searchText: ""
+  };
+
+  for (const match of matches) {
+    const blockContent = match[1] ?? "";
+    const fullMatch = match[0] ?? "";
+    const blockOffset = typeof match.index === "number" ? match.index + fullMatch.indexOf(blockContent) : 0;
+    const blockResult = parseBlock({ blockContent });
+    mergeEmbeddedBlock(aggregate, blockResult, countLineColumn(source, blockOffset));
+  }
+
+  return aggregate;
+}
+
+function mergeEmbeddedBlock(target, blockResult, start) {
+  target.symbols.push(...blockResult.symbols.map((symbol) => offsetResultLocation(symbol, start)));
+  target.facts.push(...blockResult.facts);
+  target.notes.push(...blockResult.notes.map((note) => offsetResultLocation(note, start)));
+  target.searchText = [target.searchText, blockResult.searchText].filter(Boolean).join("\n");
+}
+
+function offsetResultLocation(entry, start) {
+  if (typeof entry?.line !== "number") {
+    return entry;
+  }
+
+  const line = start.line + entry.line - 1;
+  const column = entry.line === 1 ? start.column + entry.column - 1 : entry.column;
+  return {
+    ...entry,
+    line,
+    column
   };
 }
 

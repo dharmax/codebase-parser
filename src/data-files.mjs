@@ -5,6 +5,7 @@
 
 import { extractTaggedNotes } from "./shared.mjs";
 import { findNotesFuzzily } from "./shared.mjs";
+import { isStandaloneNoteLine } from "./shared.mjs";
 
 export function parseJsonFile({ filePath, content }) {
   let value = null;
@@ -97,18 +98,5 @@ function extractExplicitMarkdownNotes(content, filePath) {
 }
 
 function isExplicitMarkdownNote(line) {
-  const trimmed = String(line ?? "").trim();
-  if (!trimmed) {
-    return false;
-  }
-
-  if (/^(?:[-*]\s+)?(?:\[\s*(?:TODO|FIXME|HACK|BUG|RISK|NOTE)\s*\]|(?:TODO|FIXME|HACK|BUG|RISK|NOTE))[:\-\s]/i.test(trimmed)) {
-    return true;
-  }
-
-  if (/^(?:[-*]\s+)?\[\s\]\s+(?:TODO|FIXME|HACK|BUG|RISK|NOTE)\b/i.test(trimmed)) {
-    return true;
-  }
-
-  return false;
+  return isStandaloneNoteLine(line);
 }
