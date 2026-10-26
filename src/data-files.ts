@@ -1,20 +1,21 @@
+import type {ParseInput, ParseResult, ParsedSymbol} from './shared.js'
 /**
  * @file data-files.mjs
  * @brief Auto-generated header for data-files.mjs. Needs detailed responsibility and scope.
  */
 
-import { extractTaggedNotes } from "./shared.mjs";
-import { findNotesFuzzily } from "./shared.mjs";
-import { isStandaloneNoteLine } from "./shared.mjs";
+import { extractTaggedNotes } from "./shared.js";
+import { findNotesFuzzily } from "./shared.js";
+import { isStandaloneNoteLine } from "./shared.js";
 
-export function parseJsonFile({ filePath, content }) {
+export function parseJsonFile({ filePath, content }: ParseInput): ParseResult {
   let value = null;
   let error = null;
 
   try {
     value = JSON.parse(content);
   } catch (caughtError) {
-    error = caughtError.message;
+    error = caughtError instanceof Error ? caughtError.message : String(caughtError);
   }
 
   const topLevelKeys = value && typeof value === "object" && !Array.isArray(value) ? Object.keys(value) : [];
@@ -32,7 +33,7 @@ export function parseJsonFile({ filePath, content }) {
   };
 }
 
-export function parseYamlFile({ filePath, content, language }) {
+export function parseYamlFile({ filePath, content, language = "" }: ParseInput): ParseResult {
   const keys = [];
   for (const match of content.matchAll(/^([A-Za-z0-9_.-]+):/gm)) {
     keys.push(match[1]);
@@ -54,7 +55,7 @@ export function parseYamlFile({ filePath, content, language }) {
   };
 }
 
-export function parseMarkdownFile({ filePath, content }) {
+export function parseMarkdownFile({ filePath, content }: ParseInput): ParseResult {
   const headings = [];
   for (const match of content.matchAll(/^(#{1,6})\s+(.+)$/gm)) {
     headings.push(match[2].trim());
@@ -85,7 +86,7 @@ export function parseMarkdownFile({ filePath, content }) {
   };
 }
 
-function extractExplicitMarkdownNotes(content, filePath) {
+function extractExplicitMarkdownNotes(content: string, filePath: string) {
   return findNotesFuzzily(content)
     .filter((note) => isExplicitMarkdownNote(note.rawLine))
     .map((note) => ({
@@ -97,6 +98,6 @@ function extractExplicitMarkdownNotes(content, filePath) {
     }));
 }
 
-function isExplicitMarkdownNote(line) {
+function isExplicitMarkdownNote(line: string) {
   return isStandaloneNoteLine(line);
 }

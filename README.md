@@ -75,10 +75,13 @@ Use `codebase-parser` to extract code symbols, AST facts, and `# TODO` / `// NOT
 ```sh
 bun install --frozen-lockfile
 bun test
+bun run typecheck
 bun run build
 ```
 
-Bun manages dependencies, runs tests against source, and bundles the Node-compatible ESM package. TypeScript generates declarations in `dist/`. Commit `bun.lock` when dependencies change.
+Source and tests use TypeScript. Bun manages dependencies, runs tests against source, and bundles the Node-compatible ESM package. TypeScript 7 checks types and generates declarations in `dist/`. Commit `bun.lock` when dependencies change.
+
+JavaScript and TypeScript parsing uses [Oxc](https://oxc.rs/docs/guide/usage/parser), declared as the runtime dependency `oxc-parser`. Symbols and call/import facts come from its AST; notes come from parser-owned comments. Other language parsers retain their existing heuristic implementation.
 
 ---
 

@@ -1,11 +1,12 @@
+import type {ParseInput, ParseResult, ParsedSymbol} from './shared.js'
 import path from 'node:path'
-import {parseJsonFile, parseMarkdownFile, parseYamlFile} from './data-files.mjs'
-import {parseJsFamily} from './js-family.mjs'
-import {parseHtml, parseRiot} from './markup.mjs'
-import {parseGo, parsePython, parseRust, parseShell} from './polyglot.mjs'
-import {parseStyles} from './styles.mjs'
+import {parseJsonFile, parseMarkdownFile, parseYamlFile} from './data-files.js'
+import {parseJsFamily} from './js-family.js'
+import {parseHtml, parseRiot} from './markup.js'
+import {parseGo, parsePython, parseRust, parseShell} from './polyglot.js'
+import {parseStyles} from './styles.js'
 
-export function parseIndexedFile({filePath, content}) {
+export function parseIndexedFile({filePath, content}: ParseInput): ParseResult {
     const extension = path.extname(filePath).toLowerCase()
 
     if (['.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.mts', '.cts', '.mtsx', '.ctsx'].includes(extension))
@@ -51,3 +52,5 @@ export function parseIndexedFile({filePath, content}) {
         searchText: content,
     }
 }
+
+export type {ParseInput, ParseResult, ParsedSymbol, ParsedNote} from './shared.js'

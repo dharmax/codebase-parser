@@ -1,16 +1,17 @@
+import type {ParseInput, ParseResult, ParsedSymbol} from './shared.js'
 /**
  * @file markup.mjs
  * @brief Auto-generated header for markup.mjs. Needs detailed responsibility and scope.
  */
 
-import { extractTaggedNotes } from "./shared.mjs";
-import { countLineColumn } from "./shared.mjs";
-import { parseJsFamily } from "./js-family.mjs";
-import { parseStyles } from "./styles.mjs";
+import { extractTaggedNotes } from "./shared.js";
+import { countLineColumn } from "./shared.js";
+import { parseJsFamily } from "./js-family.js";
+import { parseStyles } from "./styles.js";
 
-export function parseHtml({ filePath, content, language = "html" }) {
-  const ids = new Set();
-  const classes = new Set();
+export function parseHtml({ filePath, content, language = "html" }: ParseInput): ParseResult {
+  const ids = new Set<string>();
+  const classes = new Set<string>();
 
   for (const match of content.matchAll(/\sid=["']([^"']+)["']/g)) {
     ids.add(`#${match[1]}`);
@@ -43,7 +44,7 @@ export function parseHtml({ filePath, content, language = "html" }) {
   };
 }
 
-export function parseRiot({ filePath, content }) {
+export function parseRiot({ filePath, content }: ParseInput): ParseResult {
   const script = collectEmbeddedParseResults({
     filePath,
     source: content,
@@ -76,13 +77,13 @@ export function parseRiot({ filePath, content }) {
   };
 }
 
-function collectEmbeddedParseResults({ filePath, source, tagPattern, parseBlock, empty }) {
+function collectEmbeddedParseResults({ source, tagPattern, parseBlock, empty }: {filePath: string; source: string; tagPattern: RegExp; parseBlock: (input: {blockContent: string}) => ParseResult; empty: ParseResult}): ParseResult {
   const matches = [...source.matchAll(tagPattern)];
   if (matches.length === 0) {
     return empty;
   }
 
-  const aggregate = {
+  const aggregate: ParseResult = {
     language: empty.language,
     fileKind: empty.fileKind,
     symbols: [],
@@ -103,20 +104,20 @@ function collectEmbeddedParseResults({ filePath, source, tagPattern, parseBlock,
   return aggregate;
 }
 
-function mergeEmbeddedBlock(target, blockResult, start) {
+function mergeEmbeddedBlock(target: ParseResult, blockResult: ParseResult, start: {line: number; column: number}) {
   target.symbols.push(...blockResult.symbols.map((symbol) => offsetResultLocation(symbol, start)));
   target.facts.push(...blockResult.facts);
   target.notes.push(...blockResult.notes.map((note) => offsetResultLocation(note, start)));
   target.searchText = [target.searchText, blockResult.searchText].filter(Boolean).join("\n");
 }
 
-function offsetResultLocation(entry, start) {
+function offsetResultLocation<T extends {line?: number; column?: number}>(entry: T, start: {line: number; column: number}): T {
   if (typeof entry?.line !== "number") {
     return entry;
   }
 
   const line = start.line + entry.line - 1;
-  const column = entry.line === 1 ? start.column + entry.column - 1 : entry.column;
+  const column = entry.line === 1 ? start.column + (entry.column ?? 1) - 1 : entry.column;
   return {
     ...entry,
     line,
@@ -124,7 +125,7 @@ function offsetResultLocation(entry, start) {
   };
 }
 
-function emptyResult(language) {
+function emptyResult(language: string): ParseResult {
   return {
     language,
     fileKind: "empty",

@@ -4,11 +4,11 @@
   "description": "Universal, lightweight, and fast multi-language codebase parser for symbols, facts, and notes.",
   "type": "module",
   "main": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.mts",
-      "bun": "./src/index.mjs",
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
       "import": "./dist/index.mjs"
     }
   },
@@ -19,7 +19,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "bun build src/index.mjs --target=node --format=esm --outdir=dist --entry-naming=index.mjs --sourcemap=external && tsc src/index.mjs --declaration --emitDeclarationOnly --outDir dist --allowJs",
+    "build": "bun build src/index.ts --target=node --format=esm --outdir=dist --entry-naming=index.mjs --packages=external --sourcemap=external && tsc --emitDeclarationOnly",
+    "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
   "author": "dharmax",
@@ -33,8 +34,11 @@
   },
   "homepage": "https://github.com/dharmax/codebase-parser#readme",
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^7.0.2",
+    "@types/bun": "^1.3.0"
   },
-  "packageManager": "bun@1.4.4"
+  "packageManager": "bun@1.4.4",
+  "dependencies": {
+    "oxc-parser": "^0.155.0"
+  }
 }

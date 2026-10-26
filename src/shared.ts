@@ -1,3 +1,37 @@
+export interface ParseInput {
+  filePath: string
+  content: string
+  language?: string
+}
+
+export interface ParsedSymbol {
+  name: string
+  kind: string
+  exported: boolean
+  containerName?: string
+  line?: number
+  column?: number
+  metadata?: Record<string, unknown>
+}
+
+export interface ParsedNote {
+  noteType: string
+  body: string
+  filePath: string
+  line: number
+  column: number
+}
+
+export interface ParseResult {
+  language: string
+  fileKind: string
+  symbols: ParsedSymbol[]
+  facts: Array<{predicate: string; objectText: string; confidence: number}>
+  notes: ParsedNote[]
+  metadata: Record<string, unknown>
+  searchText: string
+}
+
 /**
  * Shared utilities and semantic definitions for codebase-parser.
  */
@@ -22,7 +56,7 @@ export function getNoteRegex() {
   return new RegExp(`^\\s*(?:(?:[-*]\\s+)?(?:\\[\\s*)?(${escaped.join("|")})(?:\\s*\\])?[:\\-]?|\\-\\s+\\[\\s\\])\\s+(.+)`, "i");
 }
 
-export function findNotesFuzzily(text) {
+export function findNotesFuzzily(text: string) {
   const lines = text.split("\n");
   const results = [];
   const regex = getNoteRegex();
@@ -45,7 +79,7 @@ export function findNotesFuzzily(text) {
   return results;
 }
 
-export function isStandaloneNoteLine(line) {
+export function isStandaloneNoteLine(line: string) {
   const trimmed = String(line ?? "").trim();
   if (!trimmed) {
     return false;
@@ -53,7 +87,7 @@ export function isStandaloneNoteLine(line) {
   return getNoteRegex().test(trimmed);
 }
 
-function inferNoteType(matchText) {
+function inferNoteType(matchText: string) {
   const lower = (matchText || "").toLowerCase();
   for (const [canonical, aliases] of Object.entries(SEMANTICS.NOTES.aliases)) {
     if (aliases.some(a => lower.includes(a.toLowerCase()))) return canonical;
@@ -64,7 +98,7 @@ function inferNoteType(matchText) {
   return "TODO";
 }
 
-export function extractTaggedNotes(content, { commentPattern, filePath }) {
+export function extractTaggedNotes(content: string, { commentPattern, filePath }: {commentPattern: RegExp; filePath: string}): ParsedNote[] {
   const results = [];
   const noteRegex = getNoteRegex();
 
@@ -93,7 +127,7 @@ export function extractTaggedNotes(content, { commentPattern, filePath }) {
   return results;
 }
 
-export function buildCandidateTitle(note) {
+export function buildCandidateTitle(note: Pick<ParsedNote, "body" | "noteType">) {
   const raw = String(note.body ?? "").replace(/[.]+$/, "").trim();
   if (!raw) {
     return `Follow up ${note.noteType.toLowerCase()}`;
@@ -101,11 +135,11 @@ export function buildCandidateTitle(note) {
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
-export function countLineColumn(source, offset) {
+export function countLineColumn(source: string, offset = 0) {
   const slice = source.slice(0, Math.max(0, offset));
   const lines = slice.split("\n");
   return {
     line: lines.length,
-    column: lines.at(-1).length + 1
+    column: (lines.at(-1) ?? "").length + 1
   };
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import {test} from 'bun:test'
-import {parseIndexedFile} from '../src/index.mjs'
+import {parseIndexedFile} from '../src/index.js'
 
 test('parseMarkdownFile recognizes shared standalone note markers', () => {
     const result = parseIndexedFile({
@@ -80,4 +80,59 @@ test('parseShell extracts function names and notes', () => {
     assert.equal(result.symbols.length, 1)
     assert.equal(result.symbols[0].name, 'deploy_app')
     assert.equal(result.notes[0].noteType, 'TODO')
+})
+
+test('JS/TS AST ignores declaration-like text, regexes and type-only syntax as calls', () => {
+    const result = parseIndexedFile({filePath: 'sample.ts', content: `
+const text = "export function fake() {} // TODO: not a note";
+const pattern = /function ghost() {}/;
+// TODO: keep this actual comment
+export function real<T>(value: T): T { return transform<T>(value); }
+interface Shape { render(): void; }
+`})
+    assert.deepEqual(result.symbols.map(s => s.name), ['text', 'pattern', 'real', 'Shape', 'render'])
+    assert.deepEqual(result.facts.filter(f => f.predicate === 'calls').map(f => f.objectText), ['transform'])
+    assert.equal(result.notes.length, 1)
+    assert.equal(result.notes[0].line, 4)
+})
+
+test('JS/TS AST preserves nested members, binding patterns, reexports and actual calls', () => {
+    const result = parseIndexedFile({filePath: 'sample.ts', content: `
+import type {Remote} from './types';
+export {value as renamed} from './other';
+export namespace Space {
+  export class Box<T> {
+    value: T;
+    constructor(value: T) { this.value = value; }
+    get current() { return this.value; }
+    set current(value: T) { this.value = value; }
+    run = () => service.run<T>(this.value);
+    method<U>(value: U) { return consume<U>(value); }
+  }
+}
+export const {first: alias, nested: {leaf}} = source;
+export enum Mode {One, Two}
+const lazy = import('./lazy');
+`})
+    const symbols = result.symbols
+    for (const name of ['Space', 'Box', 'value', 'constructor', 'current', 'run', 'method', 'alias', 'leaf', 'Mode', 'One', 'Two', 'renamed'])
+        assert.ok(symbols.some(s => s.name === name), name)
+    assert.equal(symbols.find(s => s.name === 'method')?.containerName, 'Box')
+    assert.equal(symbols.find(s => s.name === 'Box')?.exported, true)
+    assert.equal(symbols.filter(s => s.name === 'current').length, 2)
+    assert.deepEqual(result.facts.filter(f => f.predicate === 'imports').map(f => f.objectText), ['./types', './other', './lazy'])
+    assert.deepEqual(result.facts.filter(f => f.predicate === 'calls').map(f => f.objectText), ['run', 'consume'])
+    assert.ok(symbols.every((s, i) => i === 0 || (s.line ?? 0) >= (symbols[i - 1].line ?? 0)))
+})
+
+test('JS/TS AST selects JSX grammar and parses template-expression calls and real comments', () => {
+    const result = parseIndexedFile({filePath: 'view.tsx', content: `
+export const View = () => <main title="function fake() {}">{format(value)}</main>;
+const template = \`literal TODO: not a comment \${render(value)}\`;
+/* NOTE: actual block comment */
+`})
+    assert.deepEqual(result.symbols.map(s => s.name), ['View', 'template'])
+    assert.deepEqual(result.facts.filter(f => f.predicate === 'calls').map(f => f.objectText), ['format', 'render'])
+    assert.equal(result.notes[0].noteType, 'NOTE')
+    assert.equal(result.notes[0].line, 4)
 })

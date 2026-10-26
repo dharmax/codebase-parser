@@ -1,11 +1,12 @@
+import type {ParseInput, ParseResult, ParsedSymbol} from './shared.js'
 /**
  * @file styles.mjs
  * @brief Auto-generated header for styles.mjs. Needs detailed responsibility and scope.
  */
 
-import { extractTaggedNotes } from "./shared.mjs";
+import { extractTaggedNotes } from "./shared.js";
 
-export function parseStyles({ filePath, content, language }) {
+export function parseStyles({ filePath, content, language = "" }: ParseInput): ParseResult {
   const selectors = [];
   for (const match of content.matchAll(/(^|})\s*([^@}{][^{]+)\{/gm)) {
     const group = match[2].trim();
