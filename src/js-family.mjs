@@ -14,6 +14,7 @@ export function parseJsFamily({filePath, content, language}) {
     : ['js', 'mjs', 'cjs'].includes(language) ? ts.ScriptKind.JS : ts.ScriptKind.TS
   const source = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true, kind)
   const symbols = [], imports = [], calls = new Set(), seen = new Set()
+  const lines = content.split('\n')
   const add = (node, type, name, containerName, isExported, nameNode = node.name) => {
     if (!name) return
     const key = `${containerName ?? ''}:${type}:${name}`
@@ -22,7 +23,7 @@ export function parseJsFamily({filePath, content, language}) {
     const position = source.getLineAndCharacterOfPosition((nameNode ?? node).getStart(source))
     const line = position.line + 1, column = position.character + 1
     symbols.push({name, kind: type, ...(containerName ? {containerName} : {}), exported: isExported,
-      line, column, metadata: {signature: source.text.split('\n')[position.line]?.trim() ?? '', declarationLine: line}})
+      line, column, metadata: {signature: lines[position.line]?.trim() ?? '', declarationLine: line}})
   }
   const visit = (node, container) => {
     let nextContainer = container
