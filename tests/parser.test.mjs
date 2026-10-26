@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
-import {parseIndexedFile} from '../dist/index.mjs'
+import {test} from 'bun:test'
+import {parseIndexedFile} from '../src/index.mjs'
 
 test('parseMarkdownFile recognizes shared standalone note markers', () => {
     const result = parseIndexedFile({

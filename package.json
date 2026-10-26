@@ -4,10 +4,10 @@
   "description": "Universal, lightweight, and fast multi-language codebase parser for symbols, facts, and notes.",
   "type": "module",
   "main": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./dist/index.d.mts",
       "bun": "./src/index.mjs",
       "import": "./dist/index.mjs"
     }
@@ -19,9 +19,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "rm -rf dist && esbuild src/index.mjs --bundle --platform=node --format=esm --outfile=dist/index.mjs --sourcemap --external:node:path && tsc src/index.mjs --declaration --emitDeclarationOnly --outDir dist --allowJs",
-    "test": "npm run build && node --test tests/**/*.test.mjs",
-    "test:bun": "bun test tests/parser.test.mjs"
+    "build": "bun build src/index.mjs --target=node --format=esm --outdir=dist --entry-naming=index.mjs --sourcemap=external && tsc src/index.mjs --declaration --emitDeclarationOnly --outDir dist --allowJs",
+    "test": "bun test"
   },
   "author": "dharmax",
   "license": "MIT",
@@ -35,7 +34,7 @@
   "homepage": "https://github.com/dharmax/codebase-parser#readme",
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "esbuild": "^0.28.0",
     "typescript": "^5.0.0"
-  }
+  },
+  "packageManager": "bun@1.4.4"
 }

@@ -70,15 +70,15 @@ Use `codebase-parser` to extract code symbols, AST facts, and `# TODO` / `// NOT
 
 ---
 
-## Testing
+## Development
 
 ```sh
-# Node
-npm test
-
-# Bun
-bun test tests/parser.test.mjs
+bun install --frozen-lockfile
+bun test
+bun run build
 ```
+
+Bun manages dependencies, runs tests against source, and bundles the Node-compatible ESM package. TypeScript generates declarations in `dist/`. Commit `bun.lock` when dependencies change.
 
 ---
 
