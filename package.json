@@ -19,7 +19,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "rm -rf dist && esbuild src/index.mjs --bundle --platform=node --format=esm --outfile=dist/index.mjs --sourcemap --external:node:path && tsc src/index.mjs --declaration --emitDeclarationOnly --outDir dist --allowJs",
+    "build": "rm -rf dist && esbuild src/index.mjs --bundle --platform=node --format=esm --outfile=dist/index.mjs --sourcemap --external:node:path --external:typescript && tsc src/index.mjs --declaration --emitDeclarationOnly --outDir dist --allowJs",
     "test": "npm run build && node --test tests/**/*.test.mjs",
     "test:bun": "bun test tests/parser.test.mjs"
   },
@@ -35,7 +35,9 @@
   "homepage": "https://github.com/dharmax/codebase-parser#readme",
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "esbuild": "^0.28.0",
+    "esbuild": "^0.28.0"
+  },
+  "dependencies": {
     "typescript": "^5.0.0"
   }
 }

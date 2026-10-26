@@ -1,120 +1,74 @@
 /**
- * @file js-family.mjs
- * @brief Auto-generated header for js-family.mjs. Needs detailed responsibility and scope.
+ * JS/TS structural extraction through the TypeScript compiler AST.
+ * Call facts are syntactic candidates, not resolved cross-file references.
  */
+import ts from 'typescript'
+import {findNotesFuzzily} from './shared.mjs'
 
-import { countLineColumn } from "./shared.mjs";
-import { findNotesFuzzily } from "./shared.mjs";
+const exported = node => !!node.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)
+const defaulted = node => !!node.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword)
+const nameOf = name => name && (ts.isIdentifier(name) || ts.isPrivateIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) ? name.text : undefined
 
-const KEYWORDS = new Set(["if", "for", "while", "switch", "catch", "return", "new", "import", "function"]);
-
-export function parseJsFamily({ filePath, content, language }) {
-  const imports = [];
-  const symbols = [];
-  const calls = new Set();
-  const seenSymbols = new Set();
-
-  for (const match of content.matchAll(/^\s*import\s+(?:.+?\s+from\s+)?["']([^"']+)["']/gm)) {
-    imports.push(match[1]);
+export function parseJsFamily({filePath, content, language}) {
+  const kind = ['tsx', 'jsx', 'mtsx', 'ctsx'].includes(language) ? ts.ScriptKind.TSX
+    : ['js', 'mjs', 'cjs'].includes(language) ? ts.ScriptKind.JS : ts.ScriptKind.TS
+  const source = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true, kind)
+  const symbols = [], imports = [], calls = new Set(), seen = new Set()
+  const add = (node, type, name, containerName, isExported, nameNode = node.name) => {
+    if (!name) return
+    const key = `${containerName ?? ''}:${type}:${name}`
+    if (seen.has(key)) return
+    seen.add(key)
+    const position = source.getLineAndCharacterOfPosition((nameNode ?? node).getStart(source))
+    const line = position.line + 1, column = position.character + 1
+    symbols.push({name, kind: type, ...(containerName ? {containerName} : {}), exported: isExported,
+      line, column, metadata: {signature: source.text.split('\n')[position.line]?.trim() ?? '', declarationLine: line}})
   }
-
-  for (const match of content.matchAll(/import\(\s*["']([^"']+)["']\s*\)/g)) {
-    imports.push(match[1]);
-  }
-
-  addSymbols(symbols, seenSymbols, content, /\b(export\s+)?(?:default\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(/g, "function");
-  addSymbols(symbols, seenSymbols, content, /\b(export\s+)?class\s+([A-Za-z_$][\w$]*)\b/g, "class");
-  addSymbols(symbols, seenSymbols, content, /\b(export\s+)?interface\s+([A-Za-z_$][\w$]*)\b/g, "interface");
-  addSymbols(symbols, seenSymbols, content, /\b(export\s+)?type\s+([A-Za-z_$][\w$]*)\s*=/g, "type");
-  addSymbols(symbols, seenSymbols, content, /\b(export\s+)?enum\s+([A-Za-z_$][\w$]*)\b/g, "enum");
-  addAnonymousDefaultExport(symbols, seenSymbols, content, /export\s+default\s+(?:async\s+)?function\s*\(/g, "function");
-  addAnonymousDefaultExport(symbols, seenSymbols, content, /export\s+default\s+class(?:\s+extends\b|\s*\{)/g, "class");
-  addSymbols(symbols, seenSymbols, content, /\b(export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>/g, "function-value");
-  addSymbols(symbols, seenSymbols, content, /\b(export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?!\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>)/g, "variable");
-
-  for (const match of content.matchAll(/\b([A-Za-z_$][\w$]*)\s*\(/g)) {
-    const candidate = match[1];
-    if (!KEYWORDS.has(candidate)) {
-      calls.add(candidate);
+  const visit = (node, container) => {
+    let nextContainer = container
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      if (node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) imports.push(node.moduleSpecifier.text)
+    } else if (ts.isCallExpression(node)) {
+      if (node.expression.kind === ts.SyntaxKind.ImportKeyword && node.arguments[0] && ts.isStringLiteral(node.arguments[0]))
+        imports.push(node.arguments[0].text)
+      const callee = ts.isIdentifier(node.expression) ? node.expression.text
+        : ts.isPropertyAccessExpression(node.expression) ? node.expression.name.text : undefined
+      if (callee) calls.add(callee)
     }
-  }
-
-  const notes = extractJsNotes(content, filePath);
-
-  return {
-    language,
-    fileKind: "code",
-    symbols,
-    facts: [
-      ...imports.map((value) => ({ predicate: "imports", objectText: value, confidence: 1 })),
-      ...Array.from(calls).map((value) => ({ predicate: "calls", objectText: value, confidence: 0.52 }))
-    ],
-    notes,
-    metadata: {
-      importCount: imports.length,
-      symbolCount: symbols.length,
-      approximateCallCount: calls.size
-    },
-    searchText: [content, ...imports, ...symbols.map((symbol) => symbol.name)].join("\n")
-  };
-}
-
-function addSymbols(target, seenSymbols, content, regex, kind) {
-  for (const match of content.matchAll(regex)) {
-    const name = match[2];
-    const key = `${kind}:${name}`;
-    if (seenSymbols.has(key)) {
-      continue;
+    if (ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node) || ts.isEnumDeclaration(node) || ts.isTypeAliasDeclaration(node)) {
+      const name = nameOf(node.name) ?? (defaulted(node) ? 'default' : undefined)
+      const type = ts.isClassDeclaration(node) ? 'class' : ts.isInterfaceDeclaration(node) ? 'interface'
+        : ts.isEnumDeclaration(node) ? 'enum' : 'type'
+      add(node, type, name, container, exported(node) || defaulted(node), node.name ?? node)
+      if (name) nextContainer = name
+    } else if (ts.isFunctionDeclaration(node)) {
+      const name = nameOf(node.name) ?? (defaulted(node) ? 'default' : undefined)
+      add(node, 'function', name, container, exported(node) || defaulted(node), node.name ?? node)
+      if (name) nextContainer = name
+    } else if (ts.isVariableDeclaration(node) && ts.isVariableStatement(node.parent.parent)
+      && (ts.isSourceFile(node.parent.parent.parent) || ts.isModuleBlock(node.parent.parent.parent))) {
+      const name = nameOf(node.name)
+      const kind = node.initializer && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer)) ? 'function-value' : 'variable'
+      add(node, kind, name, container, exported(node.parent.parent), node.name)
+    } else if (container && (ts.isMethodDeclaration(node) || ts.isMethodSignature(node)
+      || ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node))) {
+      add(node, 'method', nameOf(node.name), container, exported(node), node.name)
+    } else if (container && (ts.isPropertyDeclaration(node) || ts.isPropertySignature(node))) {
+      add(node, 'property', nameOf(node.name), container, exported(node), node.name)
+    } else if (container && ts.isConstructorDeclaration(node)) {
+      add(node, 'constructor', 'constructor', container, false, node)
+    } else if (container && ts.isEnumMember(node)) {
+      add(node, 'enum-member', nameOf(node.name), container, false, node.name)
     }
-    seenSymbols.add(key);
-
-    const location = countLineColumn(content, match.index ?? 0);
-    const lineText = extractLine(content, location.line);
-    target.push({
-      name,
-      kind,
-      exported: Boolean(match[1]),
-      line: location.line,
-      column: location.column,
-      metadata: {
-        signature: lineText.trim(),
-        declarationLine: location.line
-      }
-    });
+    ts.forEachChild(node, child => visit(child, nextContainer))
   }
-}
-
-function addAnonymousDefaultExport(target, seenSymbols, content, regex, kind) {
-  const key = `${kind}:default`;
-  if (seenSymbols.has(key)) {
-    return;
-  }
-
-  const match = content.matchAll(regex).next().value;
-  if (!match || typeof match.index !== "number") {
-    return;
-  }
-
-  seenSymbols.add(key);
-  const location = countLineColumn(content, match.index);
-  const lineText = extractLine(content, location.line);
-  target.push({
-    name: "default",
-    kind,
-    exported: true,
-    line: location.line,
-    column: location.column,
-    metadata: {
-      anonymous: true,
-      defaultExport: true,
-      signature: lineText.trim(),
-      declarationLine: location.line
-    }
-  });
-}
-
-function extractLine(content, lineNumber) {
-  return String(content).split("\n")[Math.max(0, lineNumber - 1)] ?? "";
+  visit(source)
+  symbols.sort((a, b) => a.line - b.line || a.column - b.column)
+  return {language, fileKind:'code', symbols,
+    facts: [...imports.map(objectText => ({predicate:'imports',objectText,confidence:1})),
+      ...[...calls].map(objectText => ({predicate:'calls',objectText,confidence:0.52}))],
+    notes: extractJsNotes(content, filePath), metadata:{importCount:imports.length,symbolCount:symbols.length,approximateCallCount:calls.size},
+    searchText:[content,...imports,...symbols.map(s => s.name)].join('\n')}
 }
 
 function extractJsNotes(source, filePath) {

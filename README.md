@@ -1,6 +1,6 @@
 # @dharmax/codebase-parser
 
-Universal, lightweight, and fast multi-language codebase parser for extracting symbols, imports, facts, and code notes for LLM context engines.
+Multi-language codebase parser for extracting symbols, imports, facts, and code notes for LLM context engines. JavaScript/TypeScript extraction uses the TypeScript compiler AST (including member/property declarations); other languages may use lightweight heuristics. Call facts are syntactic candidates, not precise caller/callee edges; use a language server for exact references.
 
 ```
 Source Code  →  parseIndexedFile()  →  { symbols, imports, facts, notes, searchText }

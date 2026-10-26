@@ -81,3 +81,27 @@ test('parseShell extracts function names and notes', () => {
     assert.equal(result.symbols[0].name, 'deploy_app')
     assert.equal(result.notes[0].noteType, 'TODO')
 })
+
+
+test('parseJsFamily indexes TypeScript members and ignores fake symbols in strings', () => {
+    const source = [
+      'export interface Ticket { priority: number; lane?: string; execute(): void }',
+      'class Runner { priority = 2; constructor() {} run() { return this.priority } }',
+      'type Setting = { priority?: number }',
+      'const fake = "function invented() {}"',
+      'export const helper = () => new Runner()',
+    ].join('\n')
+    const result = parseIndexedFile({filePath:'src/work.ts',content:source})
+    const fields = result.symbols.filter(s => s.kind === 'property' && s.name === 'priority')
+    assert.deepEqual(fields.map(s => s.containerName), ['Ticket','Runner','Setting'])
+    assert.deepEqual(result.symbols.filter(s => s.containerName === 'Ticket').map(s => s.name),['priority','lane','execute'])
+    assert.equal(result.symbols.some(s => s.name === 'invented'),false)
+    assert.equal(result.symbols.some(s => s.name === 'helper' && s.kind === 'function-value' && s.exported),true)
+    assert.ok(result.symbols.every(s => s.line > 0 && s.column > 0))
+})
+test('parseJsFamily extracts syntactic calls without matching strings or comments', () => {
+    const result = parseIndexedFile({filePath:'src/view.tsx',content:'// pretend()\nexport function View() { const a = "fake()"; return <div>{actual()}</div> }'})
+    const calls=result.facts.filter(f=>f.predicate==='calls')
+    assert.deepEqual(calls.map(f=>f.objectText),['actual'])
+    assert.equal(calls[0].confidence < 1,true)
+})
