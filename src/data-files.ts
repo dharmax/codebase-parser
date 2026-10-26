@@ -1,12 +1,7 @@
-import type {ParseInput, ParseResult, ParsedSymbol} from './shared.js'
-/**
- * @file data-files.mjs
- * @brief Auto-generated header for data-files.mjs. Needs detailed responsibility and scope.
- */
-
-import { extractTaggedNotes } from "./shared.js";
-import { findNotesFuzzily } from "./shared.js";
-import { isStandaloneNoteLine } from "./shared.js";
+import type {ParseInput, ParseResult} from './shared.ts'
+import { extractTaggedNotes } from "./shared.ts";
+import { findNotesFuzzily } from "./shared.ts";
+import { isStandaloneNoteLine } from "./shared.ts";
 
 export function parseJsonFile({ filePath, content }: ParseInput): ParseResult {
   let value = null;

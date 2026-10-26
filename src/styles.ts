@@ -1,10 +1,5 @@
-import type {ParseInput, ParseResult, ParsedSymbol} from './shared.js'
-/**
- * @file styles.mjs
- * @brief Auto-generated header for styles.mjs. Needs detailed responsibility and scope.
- */
-
-import { extractTaggedNotes } from "./shared.js";
+import type {ParseInput, ParseResult} from './shared.ts'
+import { extractTaggedNotes } from "./shared.ts";
 
 export function parseStyles({ filePath, content, language = "" }: ParseInput): ParseResult {
   const selectors = [];

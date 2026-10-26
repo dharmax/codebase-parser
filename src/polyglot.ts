@@ -1,5 +1,5 @@
-import type {ParseInput, ParseResult, ParsedSymbol} from './shared.js'
-import { countLineColumn, findNotesFuzzily } from './shared.js';
+import type {ParseInput, ParseResult, ParsedSymbol} from './shared.ts'
+import { countLineColumn, findNotesFuzzily } from './shared.ts';
 
 export function parsePython({ filePath, content }: ParseInput): ParseResult {
   const imports = [];

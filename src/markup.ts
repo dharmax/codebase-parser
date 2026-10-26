@@ -1,13 +1,8 @@
-import type {ParseInput, ParseResult, ParsedSymbol} from './shared.js'
-/**
- * @file markup.mjs
- * @brief Auto-generated header for markup.mjs. Needs detailed responsibility and scope.
- */
-
-import { extractTaggedNotes } from "./shared.js";
-import { countLineColumn } from "./shared.js";
-import { parseJsFamily } from "./js-family.js";
-import { parseStyles } from "./styles.js";
+import type {ParseInput, ParseResult} from './shared.ts'
+import { extractTaggedNotes } from "./shared.ts";
+import { countLineColumn } from "./shared.ts";
+import { parseJsFamily } from "./js-family.ts";
+import { parseStyles } from "./styles.ts";
 
 export function parseHtml({ filePath, content, language = "html" }: ParseInput): ParseResult {
   const ids = new Set<string>();
@@ -111,7 +106,7 @@ function mergeEmbeddedBlock(target: ParseResult, blockResult: ParseResult, start
   target.searchText = [target.searchText, blockResult.searchText].filter(Boolean).join("\n");
 }
 
-function offsetResultLocation<T extends {line?: number; column?: number}>(entry: T, start: {line: number; column: number}): T {
+function offsetResultLocation<T extends {line?: number; column?: number; metadata?: Record<string, unknown>}>(entry: T, start: {line: number; column: number}): T {
   if (typeof entry?.line !== "number") {
     return entry;
   }
@@ -121,7 +116,10 @@ function offsetResultLocation<T extends {line?: number; column?: number}>(entry:
   return {
     ...entry,
     line,
-    column
+    column,
+    ...(typeof entry.metadata?.declarationLine === 'number' ? {
+      metadata: {...entry.metadata, declarationLine: start.line + entry.metadata.declarationLine - 1}
+    } : {})
   };
 }
 

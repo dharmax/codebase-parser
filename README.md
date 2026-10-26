@@ -1,9 +1,9 @@
 # @dharmax/codebase-parser
 
-Universal, lightweight, and fast multi-language codebase parser for extracting symbols, imports, facts, and code notes for LLM context engines.
+Multi-language codebase parser for extracting symbols, imports, facts, and code notes for LLM context engines. JavaScript/TypeScript extraction uses the Oxc AST (including member/property declarations); other languages may use lightweight heuristics. Call facts are syntactic candidates, not precise caller/callee edges; use a language server for exact references.
 
 ```
-Source Code  →  parseIndexedFile()  →  { symbols, imports, facts, notes, searchText }
+Source Code  →  parseIndexedFile()  →  { language, fileKind, symbols, facts, notes, metadata, searchText }
 ```
 
 ---
@@ -25,10 +25,6 @@ Source Code  →  parseIndexedFile()  →  { symbols, imports, facts, notes, sea
 ## Installation
 
 ```sh
-# npm
-npm install @dharmax/codebase-parser
-
-# bun
 bun add @dharmax/codebase-parser
 ```
 
@@ -52,15 +48,21 @@ export function startServer(port: number) {
     `,
 })
 
-console.log(result.symbols)
-// [ { name: 'startServer', kind: 'function', exported: true, line: 5, column: 1 } ]
+console.log(result.symbols.map(({name, kind}) => ({name, kind})))
+// [{name: 'startServer', kind: 'function'}, {name: 'app', kind: 'constant'}]
 
 console.log(result.facts)
-// [ { predicate: 'imports', objectText: 'express', confidence: 1 } ]
+// [{predicate: 'imports', objectText: 'express', confidence: 1},
+//  {predicate: 'calls', objectText: 'express', confidence: 0.52},
+//  {predicate: 'calls', objectText: 'listen', confidence: 0.52}]
 
-console.log(result.notes)
-// [ { noteType: 'TODO', body: 'add rate limiting', line: 4 } ]
+console.log(result.notes.map(({noteType, body, line}) => ({noteType, body, line})))
+// [{noteType: 'TODO', body: 'add rate limiting', line: 4}]
 ```
+
+JS/TS symbol positions are one-based UTF-16 name positions. `containerName` is the qualified lexical owner, such as `Space.Box.run`. Overloads share a symbol; getters, setters, and static/instance members remain distinct (`metadata.static` identifies static members). Anonymous scopes use ordinals within their parent. These structural identities survive whitespace and comment edits; changing anonymous sibling structure can change ordinals. Persistent IDs belong to the consumer.
+
+Import facts record unique syntactic dependencies, including type-only imports, reexports, and literal dynamic imports. Call facts record unique syntactic callee names, including constructors, with the established candidate confidence of `0.52`.
 
 ---
 
@@ -79,7 +81,7 @@ bun run typecheck
 bun run build
 ```
 
-Source and tests use TypeScript. Bun manages dependencies, runs tests against source, and bundles the Node-compatible ESM package. TypeScript 7 checks types and generates declarations in `dist/`. Commit `bun.lock` when dependencies change.
+This is a Bun/TypeScript library. The package exports its TypeScript source directly. Bun manages dependencies, runs tests, and builds a Bun bundle in `dist/`; TypeScript 7 checks source and tests. Commit `bun.lock` when dependencies change.
 
 JavaScript and TypeScript parsing uses [Oxc](https://oxc.rs/docs/guide/usage/parser), declared as the runtime dependency `oxc-parser`. Symbols and call/import facts come from its AST; notes come from parser-owned comments. Other language parsers retain their existing heuristic implementation.
 

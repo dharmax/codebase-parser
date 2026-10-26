@@ -2,24 +2,14 @@
   "name": "@dharmax/codebase-parser",
   "version": "0.2.0",
   "description": "Universal, lightweight, and fast multi-language codebase parser for symbols, facts, and notes.",
-  "type": "module",
-  "main": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "bun": "./src/index.ts",
-      "import": "./dist/index.mjs"
-    }
-  },
+  "exports": "./src/index.ts",
   "files": [
-    "dist",
     "src",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "bun build src/index.ts --target=node --format=esm --outdir=dist --entry-naming=index.mjs --packages=external --sourcemap=external && tsc --emitDeclarationOnly",
+    "build": "bun build src/index.ts --target=bun --outdir=dist --packages=external",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
