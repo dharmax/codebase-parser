@@ -1,5 +1,5 @@
 import type {ParseInput, ParseResult} from './shared.ts'
-import { extractTaggedNotes } from "./shared.ts";
+import { extractTaggedNotes, countLineColumn } from "./shared.ts";
 import { findNotesFuzzily } from "./shared.ts";
 import { isStandaloneNoteLine } from "./shared.ts";
 
@@ -51,9 +51,10 @@ export function parseYamlFile({ filePath, content, language = "" }: ParseInput):
 }
 
 export function parseMarkdownFile({ filePath, content }: ParseInput): ParseResult {
-  const headings = [];
+  const headings: Array<{name: string; line: number; column: number}> = [];
   for (const match of content.matchAll(/^(#{1,6})\s+(.+)$/gm)) {
-    headings.push(match[2].trim());
+    const {line, column} = countLineColumn(content, match.index);
+    headings.push({name: match[2].trim(), line, column});
   }
 
   const explicitLineNotes = extractExplicitMarkdownNotes(content, filePath);
@@ -71,13 +72,13 @@ export function parseMarkdownFile({ filePath, content }: ParseInput): ParseResul
   return {
     language: "markdown",
     fileKind: "doc",
-    symbols: headings.map((heading) => ({ name: heading, kind: "heading", exported: false })),
-    facts: headings.map((heading) => ({ predicate: "has-heading", objectText: heading, confidence: 1 })),
+    symbols: headings.map((heading) => ({ ...heading, kind: "heading", exported: false })),
+    facts: headings.map((heading) => ({ predicate: "has-heading", objectText: heading.name, confidence: 1 })),
     notes,
     metadata: {
       headingCount: headings.length
     },
-    searchText: [content, ...headings].join("\n")
+    searchText: [content, ...headings.map(heading => heading.name)].join("\n")
   };
 }
 
