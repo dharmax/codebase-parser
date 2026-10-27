@@ -1,6 +1,16 @@
 import {test, expect} from 'bun:test'
 import {parseIndexedFile, type ParsedSymbol} from '../src/index.ts'
 
+test('repeated Markdown headings preserve distinct source positions and names', () => {
+    const result = parseIndexedFile({
+        filePath: 'aspects.md',
+        content: '# Aspects\n\n## First\n### Description\n\n## Second\n### Description\n',
+    })
+    const headings = result.symbols.filter(symbol => symbol.name === 'Description')
+    expect(headings.map(({line, column}) => ({line, column}))).toEqual([{line: 4, column: 1}, {line: 7, column: 1}])
+    expect(result.facts.filter(fact => fact.objectText === 'Description')).toHaveLength(2)
+})
+
 test('parseMarkdownFile recognizes shared standalone note markers', () => {
     const result = parseIndexedFile({
         filePath: 'docs/notes.md',
